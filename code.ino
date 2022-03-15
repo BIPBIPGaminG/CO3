@@ -13,6 +13,8 @@ void setup() {
     /*For wio link!*/
     #if defined(ESP8266)
     pinMode(15, OUTPUT);
+    pinMode(2, OUTPUT);
+    pinMode(3, OUTPUT);
     digitalWrite(15, 1);
     Serial.println("Set wio link power!");
     delay(500);
@@ -47,6 +49,21 @@ void loop() {
         Serial.print("CO2eq Concentration:");
         Serial.print(co2_eq_ppm);
         Serial.println("ppm");
+
+        if ((500 < co2_eq_ppm || 250 < tvoc_ppb) && (co2_eq_ppm < 1000 || tvoc_ppb < 200)) {
+          Serial.println("attention");
+          digitalWrite(3, HIGH);
+          delay(1000);
+          digitalWrite(3, LOW);
+        }else if (co2_eq_ppm > 1000 || tvoc_ppb > 2000) {
+          Serial.println("alert");
+          digitalWrite(3, HIGH);
+          digitalWrite(2, HIGH);
+          delay(250);
+          digitalWrite(3, LOW);
+          digitalWrite(2, LOW);
+        }
+
     } else {
         Serial.println("error reading IAQ values\n");
     }
