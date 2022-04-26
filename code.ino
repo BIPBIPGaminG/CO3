@@ -1,8 +1,14 @@
-#include <Arduino.h>
+#include <Wire.h>
+#include <i2c.h>
+#include <sensirion_common.h>
+#include <sensirion_configuration.h>
+#include <sgp30.h>
+#include <sgp_featureset.h>
+#include <rgb_lcd.h>
 
-#include "sensirion_common.h"
-#include "sgp30.h"
+rgb_lcd lcd;
 
+#define DS1621_ADDRESS  0x48
 
 void setup() {
     s16 err;
@@ -10,11 +16,20 @@ void setup() {
     Serial.begin(115200);
     Serial.println("serial start!!");
 
+    Wire.begin();
+    Wire.beginTransmission(DS1621_ADDRESS);             // connect to DS1621 (#0)
+    Wire.send(0xAC);                            // Access Config
+    Wire.send(0x02);                            // set for continuous conversion
+    Wire.beginTransmission(DS1621_ADDRESS);             // restart
+    Wire.send(0xEE);                            // start conversions
+    Wire.endTransmission();
+    
+    pinMode(4, OUTPUT);
+    pinMode(3, OUTPUT);
+    
     /*For wio link!*/
     #if defined(ESP8266)
     pinMode(15, OUTPUT);
-    pinMode(2, OUTPUT);
-    pinMode(3, OUTPUT);
     digitalWrite(15, 1);
     Serial.println("Set wio link power!");
     delay(500);
@@ -34,38 +49,89 @@ void setup() {
         Serial.println("error reading signals");
     }
     err = sgp_iaq_init();
-    //
+
+    lcd.begin(16, 2);
+    lcd.setRGB(255, 255, 255);
 }
 
+char c_buffer[8], f_buffer[8];
+
 void loop() {
+    lcd.setCursor(0,0);
     s16 err = 0;
     u16 tvoc_ppb, co2_eq_ppm;
     err = sgp_measure_iaq_blocking_read(&tvoc_ppb, &co2_eq_ppm);
+
+    int16_t c_temp = get_temperature();
+    
     if (err == STATUS_OK) {
-        Serial.print("tVOC  Concentration:");
-        Serial.print(tvoc_ppb);
-        Serial.println("ppb");
+        lcd.print("COV:" + String(tvoc_ppb) + "ppb");
+        lcd.setCursor(11, 0);
+        
+        if(c_temp < 0) {   // if temperature < 0 °C
+          c_temp = abs(c_temp);  // absolute value
+          sprintf(c_buffer, "-%02u.%1u%cC", c_temp / 10, c_temp % 10, 223);
+        }
+        else {
+          if (c_temp >= 1000)    // if temperature >= 100.0 °C
+            sprintf(c_buffer, "%03u.%1u%cC", c_temp / 10, c_temp % 10, 223);
+          else
+            sprintf(c_buffer, " %02u.%1u%cC", c_temp / 10, c_temp % 10, 223);
+        }
+        lcd.print(String(c_buffer) + "°C");
+        lcd.setCursor(0, 1);
+        lcd.print("CO2:" + String(co2_eq_ppm) + "ppm");
 
-        Serial.print("CO2eq Concentration:");
-        Serial.print(co2_eq_ppm);
-        Serial.println("ppm");
-
-        if ((500 < co2_eq_ppm || 250 < tvoc_ppb) && (co2_eq_ppm < 1000 || tvoc_ppb < 200)) {
-          Serial.println("attention");
-          digitalWrite(3, HIGH);
-          delay(1000);
-          digitalWrite(3, LOW);
-        }else if (co2_eq_ppm > 1000 || tvoc_ppb > 2000) {
+        if (co2_eq_ppm >= 800 || tvoc_ppb >= 2000) {
           Serial.println("alert");
           digitalWrite(3, HIGH);
-          digitalWrite(2, HIGH);
+          digitalWrite(4, HIGH);
+          lcd.setRGB(255, 0, 0);
           delay(250);
           digitalWrite(3, LOW);
-          digitalWrite(2, LOW);
+          digitalWrite(4, LOW);
+          lcd.setRGB(255, 255, 255);
+          delay(500);
+          digitalWrite(3, HIGH);
+          digitalWrite(4, HIGH);
+          lcd.setRGB(255, 0, 0);
+          delay(250);
+          digitalWrite(3, LOW);
+          digitalWrite(4, LOW);
+          lcd.setRGB(255, 255, 255);
+        }else if ((500 < co2_eq_ppm || 250 < tvoc_ppb) && (co2_eq_ppm < 800 || tvoc_ppb < 2000)) {
+          Serial.println("attention");
+          digitalWrite(3, HIGH);
+          lcd.setRGB(255, 120, 91);
+          delay(250);
+          digitalWrite(3, LOW);
+          lcd.setRGB(255, 255, 255);
         }
 
     } else {
         Serial.println("error reading IAQ values\n");
     }
     delay(1000);
+}
+
+int16_t get_temperature() {
+   int8_t firstByte;
+    int8_t secondByte;
+    float temp = 0;
+
+    delay(1000);                                // give time for measurement
+
+    Wire.beginTransmission(DEV_ID);
+    Wire.send(0xAA);                            // read temperature command
+    Wire.endTransmission();
+    Wire.requestFrom(DEV_ID, 2);    // request two bytes from DS1621 (0.5 deg. resolution)
+
+    firstByte = Wire.receive();           // get first byte
+    secondByte = Wire.receive();    // get second byte
+
+    temp = firstByte;
+
+    if (secondByte)             // if there is a 0.5 deg difference
+        temp += 0.5;
+  return temp;
 }
