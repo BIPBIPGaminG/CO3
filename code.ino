@@ -10,7 +10,7 @@ void loop() {
   co3.update();
   
   co3.writeLCD("co2: " + String(co3.getCO2()), 0, 0);
-  co3.writeLCD(String(co3.getTemperature()) + "°C, 0, 10);
+  co3.writeLCD(String(co3.getTemperature()) + "°C", 0, 10);
   co3.writeLCD("cov: " + String(co3.getCO2()), 1, 0);
   
   if((500 < co3.getCO2() < 800) || (250 < co3.getCOV() < 2000)){
