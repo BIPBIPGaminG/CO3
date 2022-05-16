@@ -12,14 +12,12 @@ class CO3{
 
 		char getTemperature();
 		int get_temperature();
-		int & getCOV()       { return cov; }
-  const int & getCOV() const { return cov; }
-        int & getCO2()       { return co2; }
-  const int & getCO2() const { return co2; }
+		int getCOV(){ return cov; }
+		int getCO2(){ return co2; }
 
-		void blink(const bool* state);
-		void bip(const bool* state);
+		void blink(bool state);
+		void bip(bool state);
 
-		void writeLCD(const char* text, const int* line, const int* column);
-		void setLCDColor(const int* R, const int* G, const int* B);
+		void writeLCD(char text, int line, int column);
+		void setLCDColor(int R, int G, int B);
 };

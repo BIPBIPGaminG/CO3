@@ -82,11 +82,9 @@ char CO3::getTemperature(){
 }
 
 int get_temperature(){
-	int8_t firstByte;
-    int8_t secondByte;
+	int firstByte;
+	int secondByte;
   	float temp = 0;
-
-  	delay(1000);                                // give time for measurement
 
   	Wire.beginTransmission(DS1621_ADDRESS);
   	Wire.write(0xAA);                            // read temperature command
@@ -103,7 +101,7 @@ int get_temperature(){
   	return temp;
 }
 
-void CO3::blink(const bool* state){
+void CO3::blink(bool state){
 	if (state){
 		digitalWrite(3, HIGH);
 	}else{
@@ -111,7 +109,7 @@ void CO3::blink(const bool* state){
 	}
 }
 
-void CO3::bip(const bool* state){
+void CO3::bip(bool state){
 	if (state){
 		digitalWrite(4, HIGH);
 	}else{
@@ -119,11 +117,11 @@ void CO3::bip(const bool* state){
 	}
 }
 
-void CO3::writeLCD(const char* text, const int* line, const int* column){
+void CO3::writeLCD(char text, int line, int column){
 	lcd.setCursor(line, column);
 	lcd.print(text);
 }
 
-void CO3::setLCDColor(const int* R, const int* G, const int* B){
-	lcd.setRGB(255, 255, 255);
+void CO3::setLCDColor(int R, int G, int B){
+	lcd.setRGB(R, G, B);
 }
